@@ -1,52 +1,42 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Absensi Rapat</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 20px; }
-        #reader { width: 100%; max-width: 500px; margin: auto; background: white; border-radius: 10px; overflow: hidden; }
-        #status { margin-top: 20px; padding: 15px; border-radius: 5px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .success { color: green; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h2>Scanner Absensi Rapat</h2>
-    <div id="reader"></div>
-    <div id="status">Siap memindai...</div>
+<script>
+    // 1. MASUKKAN URL WEB APP GOOGLE SCRIPT TERBARU DI SINI
+    const scriptURL = 'MASUKKAN_URL_BARU_SETELAH_DEPLOY_ULANG';
 
-    <script>
-        // MASUKKAN URL WEB APP GOOGLE SCRIPT MAS DI SINI
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbyZkgyIJW_3Jo__REQQIIscZoK2GMYAsHWxMjSjPUjG8N4OM2NmJFnPBC1hIxSLZtmEDg/exec';
+    // 2. Variabel kunci (WAJIB di luar fungsi)
+    let isScanning = false; 
 
-        function onScanSuccess(decodedText) {
-            document.getElementById('status').innerHTML = "Sedang mengirim data: " +https://script.google.com/macros/s/AKfycbzveEmq2pWd1Lb4ondgl9iUaLmnbKYhGNSA1KfM6xhBUiS0sWT7XDAgIdFQ--wbB5Vj_A/exec decodedText;
+    function onScanSuccess(decodedText) {
+        // Jika sedang memproses scan, jangan terima scan baru (mencegah berantai)
+        if (isScanning) return; 
+        
+        isScanning = true; // Kunci diaktifkan
+        document.getElementById('status').innerHTML = "Sedang mengirim data: " + decodedText;
+        
+        fetch(scriptURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ id: decodedText })
+        })
+        .then(() => {
+            document.getElementById('status').innerHTML = `<span class="success">BERHASIL ABSEN: ${decodedText}</span>`;
             
-            // Kirim data ke Google Sheets
-            fetch(scriptURL, {
-                method: 'POST',
-                mode: 'no-cors', // Penting untuk Google Apps Script
-                body: JSON.stringify({ id: decodedText })
-            })
-            .then(() => {
-                document.getElementById('status').innerHTML = `<span class="success">Berhasil Absen: ${decodedText}</span>`;
-                // Refresh scanner setelah 2 detik agar bisa scan orang berikutnya
-                setTimeout(() => { document.getElementById('status').innerHTML = "Siap memindai..."; }, 2000);
-            })
-            .catch(error => {
-                alert("Error: " + error);
-                document.getElementById('status').innerHTML = "Gagal mengirim data.";
-            });
-        }
+            // JEDA 3 DETIK: Memberikan waktu untuk menjauhkan barcode dari kamera
+            setTimeout(() => { 
+                isScanning = false; // Buka kunci kembali
+                document.getElementById('status').innerHTML = "Siap memindai..."; 
+            }, 3000); 
+        })
+        .catch(error => {
+            alert("Error: " + error);
+            isScanning = false; // Jika error, buka kunci agar bisa coba lagi
+            document.getElementById('status').innerHTML = "Gagal mengirim data.";
+        });
+    }
 
-        function onScanFailure(error) {
-            // Kita abaikan saja error scan agar tidak memenuhi log
-        }
+    function onScanFailure(error) {
+        // Abaikan error saat kamera tidak menemukan barcode dalam frame
+    }
 
-        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-    </script>
-</body>
-</html>
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+</script>
